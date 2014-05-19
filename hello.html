@@ -1,0 +1,93 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN" "http://www.w3.org/TR/REC-html40/loose.dtd">
+<html>
+  <head>
+    <title>Salesforce OAuth2 User-Agent Flow demo</title>
+    <link rel="stylesheet" type="text/css" href="" />
+    <script type="text/javascript" src="jslib/jquery.js"></script>
+    <script type="text/javascript" src="jslib/flXHR/flXHR.js"></script>
+    <script type="text/javascript" src="https://login.salesforce.com/soap/ajax/21.0/connection.js"></script>
+    <script type="text/javascript" src="js/sforce-override-flxhr.js"></script>
+    <script type="text/javascript">
+jQuery(function($) {
+  var sfdcAuthzUrl = 'https://login.salesforce.com/services/oauth2/authorize';
+
+//var consumerKey = '3MVG9yZ.WNe6byQCZF_WVeveJdqBerrAYvin1rXaQoWafbUo.LWCFjZGztTQ7m0rSfMFUohCKoXFvpkZi7dsl';
+  var consumerKey = '3MVG9Y6d_Btp4xp5FDfiGhvzlaH.PfNinVHDtxjKSkMeOLeritWXDC3zkk6IsfK5N9fDeBFREMblidApYPkX.';
+  var callbackUrl = location.href.split('/').slice(0, -1).join('/') + '/callback.html'
+
+  var accessToken = document.cookie.match(/sfdc_access_token=([^;]+)/);
+  if (accessToken) accessToken = decodeURIComponent(accessToken[1]);
+  var instanceUrl = document.cookie.match(/sfdc_instance_url=([^;]+)/);
+  if (instanceUrl) instanceUrl = decodeURIComponent(instanceUrl[1]);
+
+  // If user is already authorized by OAuth
+  if (accessToken) {
+    $('#authorize-btn').hide();
+    $('#logout-btn').show().click(function() {
+      document.cookie = 'sfdc_access_token=; sfdc_server_url=;';
+      location.reload();
+    });
+    startSforceQuery();
+  } else {
+    $('#authorize-btn').click(function() {
+      var url = sfdcAuthzUrl + '?response_type=token' + 
+       '&client_id=' + consumerKey +
+       '&redirect_uri=' + encodeURIComponent(callbackUrl) +
+       '&state=' + encodeURIComponent(location.href);
+      location.href = url;
+    });
+  }
+
+  function startSforceQuery() {
+    sforce.connection.sessionId = accessToken;
+    sforce.connection.serverUrl = 
+      instanceUrl + sforce.connection.serverUrl.replace(/^https?:\/\/[^\/]+/,'');
+
+    $('#response').show();
+
+    sforce.connection.getUserInfo(function(res) {
+      $('#userFullName').text(res.userFullName);
+      $('#userEmail').text(res.userEmail);
+      $('#organizationName').text(res.organizationName);
+    });
+    sforce.connection.query("SELECT count() FROM Account", function(res){
+      $('#accountNum').text(res.size);
+    });
+    sforce.connection.query("SELECT count() FROM Contact", function(res){
+      $('#contactNum').text(res.size);
+    });
+    var oppList = $('#oppList');
+    sforce.connection.query("SELECT Id, Name FROM Opportunity LIMIT 10", function(res) {
+      $.each(res.getArray('records'), function() {
+        var rec = this;
+        $('<li></li>')
+          .append($('<a href="'+instanceUrl+'/'+rec.Id+'"></a>').text(rec.Name))
+          .appendTo(oppList);
+      })
+    });
+
+  }
+});
+    </script>
+	</head>
+	<body>
+    <!--
+    <p>You must ask your org's Salesforce administrator to install <a href="https://login.salesforce.com/?startURL=%2Fpackaging%2FinstallPackage.apexp%3Fp0%3D04tA0000000IMjA">this package</a> before testing this OAuth2 User-Agent flow demo.</p>
+    -->
+    <input type="button" id="authorize-btn" value="Connect Salesforce using OAuth2" />
+    <input type="button" id="logout-btn" value="Logout from Salesforce" style="display:none;"/>
+
+    <div id="response" style="display:none">
+      <p><b>Full Name :</b> <span id="userFullName"></span></p>
+      <p><b>Email :</b> <span id="userEmail"></span></p>
+      <p><b>Organization Name :</b> <span id="organizationName"></span></p>
+      <p id="recordStat">
+        You have <span id="accountNum"></span> Accounts in your org. <br/>
+        You have <span id="contactNum"></span> Contacts in your org.
+      </p>
+      Opportunities in your org
+      <ul id="oppList"></ul>
+    </div>
+
+	</body>
+</html>

@@ -1,0 +1,27 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN" "http://www.w3.org/TR/REC-html40/loose.dtd">
+<html>
+  <head>
+    <title></title>
+    <script type="text/javascript">
+(function() {
+  var hash = location.href.split('#')[1];
+  var pairs = hash.split('&');
+  var params = {};
+  for (var i=0; i<pairs.length; i++) {
+    var pair = pairs[i].split('=');
+    params[pair[0]] = pair[1];
+  }
+  var accessToken = params['access_token'];
+  var instanceUrl = params['instance_url'];
+  var stateUrl = decodeURIComponent(params['state']);
+  if (location.href.indexOf(stateUrl.split('/').slice(0, 3).join('/'))==0) {
+    document.cookie = 'sfdc_access_token='+accessToken;
+    document.cookie = 'sfdc_instance_url='+instanceUrl;
+    location.href = stateUrl;
+  }
+})();
+    </script>
+	</head>
+	<body>
+	</body>
+</html>
